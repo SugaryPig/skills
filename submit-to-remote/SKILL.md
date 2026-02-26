@@ -1,6 +1,6 @@
 ---
 name: submit-to-remote
-description: Submits changes to remote by project conventions: fix lint and style (and hst-husky pre-commit issues), commit with feat/fix and issue number, then push. Use when the user wants to commit and push, submit to remote, fix pre-commit or husky errors, or handle lint/style before commit.
+description: Submits changes to remote by project conventions: fix lint and style (and hst-husky pre-commit issues), commit with feat/fix and issue number (user-provided #number first, then branch name, then last remote git log, else YYYYMMDD000), then push. Use when the user wants to commit and push, submit to remote (e.g. 推一下 #6796264766), fix pre-commit or husky errors, or handle lint/style before commit.
 ---
 
 # 按规范提交到远端
@@ -50,12 +50,16 @@ description: Submits changes to remote by project conventions: fix lint and styl
 - `feat: #12345 新增自选股加入自选弹窗`
 - `fix: #12345 修复行情页闪屏问题`
 
-### 获取 issue 编号
+### 获取 issue 编号（井号后的数字）
 
-1. **优先从当前分支名取数**：分支名中含数字（如 `feature/12345-xxx`、`fix/12345`）则用该数字。
-2. **分支无数字时**：用**上一次远程提交**的 commit message 里解析到的 `#数字`（如 origin 当前分支或默认分支最近一条）。
+按以下**优先级**取值，用第一个能拿到的即可：
 
-若无法从分支或远程历史解析到数字，可询问用户提供 issue 编号，或说明需手动填写。
+1. **用户/Agent 显式提供**：用户或对话中已给出 `#数字` 时优先用该数字。例如用户说「推一下 #6796264766」则用 `#6796264766`。在 commit 文案里保留井号与数字即可（如 `feat: #6796264766 描述`）。
+2. **从当前分支名解析**：分支名中含数字（如 `feature/12345-xxx`、`fix/6796264766`）则从分支名提取该数字作为 `#number`。
+3. **从上一次远端 commit 解析**：若前两者都没有，则从**远端**最近一条 commit message 里解析 `#数字`。Agent 可执行以下命令获取并解析：
+   - 当前分支对应的远端最近一条：`git log -1 origin/$(git branch --show-current) --pretty=format:"%s"`（若当前分支未推送过可先 `git fetch origin`，或改用 `origin/HEAD` 等）
+   - 从输出中匹配 `#` 后连续数字作为 issue 编号。
+4. **兜底**：若以上都拿不到数字，则使用 **当前日期 + 000**，格式为 `YYYYMMDD000`。例如 2026 年 2 月 26 日即为 `20260226000`，commit 中写 `feat: #20260226000 描述`。
 
 ---
 
@@ -74,6 +78,6 @@ git push
 ## 四、工作流小结
 
 1. 运行 `pnpm lint:all:fix`，按报错修完 lint/style，直至 pre-commit 能通过。
-2. 确定是 **feat**（新增）还是 **fix**（修 bug），并得到 issue 编号 `#number`。
+2. 确定是 **feat**（新增）还是 **fix**（修 bug），并按优先级得到 issue 编号：用户提供的 `#数字` → 分支名中的数字 → 上次远端 git log 中的 `#数字` → 否则用 `YYYYMMDD000`。
 3. 执行 `git add`（若尚未暂存），再 `git commit`，文案格式：`feat: #12345 描述` 或 `fix: #12345 描述`。
 4. **Commit 通过后**执行 `git push`，把本次提交推送到远端。
